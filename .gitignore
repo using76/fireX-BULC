@@ -2,3 +2,4 @@
 /build
 nul
 /build_fp32
+/test_simple
