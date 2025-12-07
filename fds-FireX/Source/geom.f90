@@ -4977,7 +4977,11 @@ SUBROUTINE CHECK_WALL_CELL_PLANE_MATCH
 ! Routine checks that external boundaries match among neighboring meshes. This is not strictly enforced
 ! by FDS but is required to compute same cut-cells on mesh ghost-cells and other mesh internal cells.
 
+#ifdef WITHOUT_MPIF08
+USE MPI
+#else
 USE MPI_F08
+#endif
 
 ! Local variables:
 INTEGER :: NM,NOM,IW,IOR,IERR
@@ -5031,12 +5035,20 @@ END SUBROUTINE CHECK_WALL_CELL_PLANE_MATCH
 
 SUBROUTINE EXCHANGE_CC_NOADVANCE_INFO
 
+#ifdef WITHOUT_MPIF08
+   USE MPI
+#else
    USE MPI_F08
+#endif
 
    ! Local Variables:
    INTEGER :: NM,NOM,N,IERR,I,J,K,ICC,JCC
    TYPE(MESH_TYPE), POINTER :: M
+#ifdef WITHOUT_MPIF08
+   INTEGER, ALLOCATABLE, DIMENSION(:) :: REQ0,REQ0DUM
+#else
    TYPE (MPI_REQUEST), ALLOCATABLE, DIMENSION(:) :: REQ0,REQ0DUM
+#endif
    INTEGER :: N_REQ0
    LOGICAL :: PROCESS_SENDREC
 

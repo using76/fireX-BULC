@@ -203,7 +203,9 @@ if(USE_HYPRE OR USE_HYPRE_NVIDIA OR USE_HYPRE_AMDGPU OR USE_HYPRE_INTELGPU)
         )
 
         # Set some options for building hypre
-        if (WIN32)
+        # For gfortran on Windows, use default name mangling (lowercase + underscore)
+        # CAPS is for Intel Fortran on Windows
+        if (WIN32 AND NOT CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
             set(HYPRE_ENABLE_FMANGLE CAPS)
         endif()
         if (USE_HYPRE_NVIDIA AND USE_HYPRE_AMDGPU)
