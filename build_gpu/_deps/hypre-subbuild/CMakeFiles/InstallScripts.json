@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

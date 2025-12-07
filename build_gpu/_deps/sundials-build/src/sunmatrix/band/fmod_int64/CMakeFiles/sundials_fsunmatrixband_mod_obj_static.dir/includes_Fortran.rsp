@@ -1,0 +1,1 @@
+-I"C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-src/include" -I"C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-build/include" -I"C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-src/src/sundials" -I"C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-build/src/sundials" -IC:/Users/ji/Documents/fireX/build_gpu/fortran_STATIC -IC:/msys64/ucrt64/include

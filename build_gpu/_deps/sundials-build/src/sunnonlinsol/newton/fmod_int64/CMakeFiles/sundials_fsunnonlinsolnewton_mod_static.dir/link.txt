@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\..\bin\libsundials_fsunnonlinsolnewton_mod.a CMakeFiles/sundials_fsunnonlinsolnewton_mod_obj_static.dir/fsunnonlinsol_newton_mod.f90.obj CMakeFiles/sundials_fsunnonlinsolnewton_mod_obj_static.dir/fsunnonlinsol_newton_mod.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\..\bin\libsundials_fsunnonlinsolnewton_mod.a

@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_sunnonlinsolfixedpoint.a CMakeFiles/sundials_sunnonlinsolfixedpoint_obj_static.dir/sunnonlinsol_fixedpoint.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_sunnonlinsolfixedpoint.a

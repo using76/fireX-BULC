@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_sundomeigestpower.a CMakeFiles/sundials_sundomeigestpower_obj_static.dir/sundomeigest_power.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_sundomeigestpower.a

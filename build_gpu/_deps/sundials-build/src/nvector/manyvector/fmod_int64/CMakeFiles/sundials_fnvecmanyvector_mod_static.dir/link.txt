@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\..\bin\libsundials_fnvecmanyvector_mod.a CMakeFiles/sundials_fnvecmanyvector_mod_obj_static.dir/fnvector_manyvector_mod.f90.obj CMakeFiles/sundials_fnvecmanyvector_mod_obj_static.dir/fnvector_manyvector_mod.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\..\bin\libsundials_fnvecmanyvector_mod.a

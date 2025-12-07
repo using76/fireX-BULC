@@ -1934,7 +1934,7 @@ ENDIF
 
 #ifdef WITH_TRITON
 ! Finalize GPU Bridge and Python runtime
-CALL FINALIZE_GPU_BRIDGE()
+CALL GPU_FINALIZE()
 #endif
 
 ! Shutdown MPI

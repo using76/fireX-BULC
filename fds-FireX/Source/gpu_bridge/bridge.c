@@ -17,8 +17,8 @@ static int python_initialized = 0;
 static PyObject* triton_module = NULL;
 static PyObject* radiation_func = NULL;
 
-static int init_numpy(void);
-static PyObject* create_numpy_array_from_ptr(float* ptr, int ndim, npy_intp* dims);
+static void* init_numpy_internal(void);
+static PyObject* create_numpy_array_from_ptr(double* ptr, int ndim, npy_intp* dims);
 
 int32_t gpu_bridge_init(void) {
     PyObject* sys_path = NULL;
@@ -33,7 +33,7 @@ int32_t gpu_bridge_init(void) {
         return -1;
     }
     
-    if (init_numpy() < 0) {
+    if (init_numpy_internal() == NULL) {
         fprintf(stderr, "GPU Bridge: Failed to initialize NumPy\n");
         Py_Finalize();
         return -1;
@@ -92,34 +92,39 @@ void gpu_bridge_finalize(void) {
 }
 
 int32_t gpu_bridge_check_gpu(void) {
-    PyObject *torch_module, *cuda_module, *is_available_func, *result;
+    PyObject *check_func, *result;
     int gpu_available = 0;
-    
-    if (!python_initialized) return 0;
-    
-    torch_module = PyImport_ImportModule("torch");
-    if (!torch_module) { if (PyErr_Occurred()) PyErr_Print(); return 0; }
-    
-    cuda_module = PyObject_GetAttrString(torch_module, "cuda");
-    if (cuda_module) {
-        is_available_func = PyObject_GetAttrString(cuda_module, "is_available");
-        if (is_available_func && PyCallable_Check(is_available_func)) {
-            result = PyObject_CallObject(is_available_func, NULL);
-            if (result) { gpu_available = PyObject_IsTrue(result); Py_DECREF(result); }
-            Py_DECREF(is_available_func);
+
+    if (!python_initialized || !triton_module) return 0;
+
+    /* Use radiation module's check_gpu_available() instead of direct torch import */
+    /* This avoids potential memory issues with embedded Python + torch initialization */
+    check_func = PyObject_GetAttrString(triton_module, "check_gpu_available");
+    if (check_func && PyCallable_Check(check_func)) {
+        result = PyObject_CallObject(check_func, NULL);
+        if (result) {
+            gpu_available = PyObject_IsTrue(result);
+            Py_DECREF(result);
+        } else {
+            if (PyErr_Occurred()) PyErr_Print();
         }
-        Py_DECREF(cuda_module);
+        Py_DECREF(check_func);
+    } else {
+        /* Fallback: assume GPU not available if function not found */
+        if (PyErr_Occurred()) PyErr_Clear();
+        fprintf(stdout, "GPU Bridge: check_gpu_available not found, assuming CPU mode\n");
+        return 0;
     }
-    Py_DECREF(torch_module);
-    
+
     fprintf(stdout, "GPU Bridge: CUDA %s\n", gpu_available ? "available" : "not available");
     return gpu_available;
 }
 
-static int init_numpy(void) { import_array(); return 0; }
+static void* init_numpy_internal(void) { import_array(); return (void*)1; }
 
-static PyObject* create_numpy_array_from_ptr(float* ptr, int ndim, npy_intp* dims) {
-    return PyArray_SimpleNewFromData(ndim, dims, NPY_FLOAT32, (void*)ptr);
+static PyObject* create_numpy_array_from_ptr(double* ptr, int ndim, npy_intp* dims) {
+    /* Use NPY_FLOAT64 to match Fortran REAL(EB) = FP64 */
+    return PyArray_SimpleNewFromData(ndim, dims, NPY_FLOAT64, (void*)ptr);
 }
 
 int32_t gpu_radiation_kernel(const RadiationGPUData* data) {

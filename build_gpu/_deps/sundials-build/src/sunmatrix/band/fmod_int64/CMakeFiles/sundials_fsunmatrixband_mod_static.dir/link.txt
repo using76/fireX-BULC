@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\..\bin\libsundials_fsunmatrixband_mod.a CMakeFiles/sundials_fsunmatrixband_mod_obj_static.dir/fsunmatrix_band_mod.f90.obj CMakeFiles/sundials_fsunmatrixband_mod_obj_static.dir/fsunmatrix_band_mod.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\..\bin\libsundials_fsunmatrixband_mod.a

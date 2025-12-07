@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-build/POSIX_TIMER_TEST/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

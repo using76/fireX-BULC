@@ -1,0 +1,14 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+C:/Users/ji/Documents/fireX/build_gpu/_deps/sundials-build/POSIX_TIMER_TEST/ltest.c
+time.h
+-
+unistd.h
+-
+

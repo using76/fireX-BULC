@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_sunlinsolsptfqmr.a CMakeFiles/sundials_sunlinsolsptfqmr_obj_static.dir/sunlinsol_sptfqmr.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_sunlinsolsptfqmr.a

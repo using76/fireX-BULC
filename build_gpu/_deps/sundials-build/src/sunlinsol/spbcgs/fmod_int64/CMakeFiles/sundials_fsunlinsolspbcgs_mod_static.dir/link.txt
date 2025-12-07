@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\..\bin\libsundials_fsunlinsolspbcgs_mod.a CMakeFiles/sundials_fsunlinsolspbcgs_mod_obj_static.dir/fsunlinsol_spbcgs_mod.f90.obj CMakeFiles/sundials_fsunlinsolspbcgs_mod_obj_static.dir/fsunlinsol_spbcgs_mod.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\..\bin\libsundials_fsunlinsolspbcgs_mod.a

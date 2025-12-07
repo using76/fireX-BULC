@@ -8,9 +8,10 @@ endif ()
 project(
     fds
     VERSION 6.9.1
-    LANGUAGES Fortran
+    LANGUAGES Fortran C
 )
 enable_language(Fortran)
+enable_language(C)
 
 option(USE_HYPRE           "Use the hypre library"                    ON)
 option(USE_HYPRE_NVIDIA    "Use the hypre library with NVIDIA GPUs"   OFF)
@@ -111,6 +112,13 @@ if(USE_TRITON)
     target_compile_definitions(fds PRIVATE WITH_TRITON)
     message(STATUS "Triton GPU kernels enabled")
 
+    # Add GPU bridge source files
+    target_sources(fds PRIVATE
+        Source/gpu_bridge/bridge.f90
+        Source/gpu_bridge/bridge.c
+    )
+    target_include_directories(fds PRIVATE Source/gpu_bridge)
+
     # Find Python for embedding
     find_package(Python3 COMPONENTS Development NumPy)
     if(Python3_FOUND)
@@ -120,6 +128,8 @@ if(USE_TRITON)
             target_include_directories(fds PRIVATE ${Python3_NumPy_INCLUDE_DIRS})
         endif()
         message(STATUS "Python3 found: ${Python3_EXECUTABLE}")
+        message(STATUS "Python3 include: ${Python3_INCLUDE_DIRS}")
+        message(STATUS "NumPy include: ${Python3_NumPy_INCLUDE_DIRS}")
     else()
         message(WARNING "Python3 not found - Triton integration will be limited")
     endif()

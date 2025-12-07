@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_sunlinsolband.a CMakeFiles/sundials_sunlinsolband_obj_static.dir/sunlinsol_band.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_sunlinsolband.a

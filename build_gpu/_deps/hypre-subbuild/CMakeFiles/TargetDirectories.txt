@@ -1,0 +1,3 @@
+C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/hypre-populate.dir
+C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/edit_cache.dir
+C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/rebuild_cache.dir

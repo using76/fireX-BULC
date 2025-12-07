@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_fcore_mod.a CMakeFiles/sundials_fcore_mod_obj_static.dir/fsundials_core_mod.c.obj CMakeFiles/sundials_fcore_mod_obj_static.dir/fsundials_core_mod.f90.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_fcore_mod.a

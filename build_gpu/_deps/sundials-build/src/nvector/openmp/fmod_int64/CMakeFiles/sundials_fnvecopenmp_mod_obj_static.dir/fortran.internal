@@ -1,0 +1,3 @@
+# The fortran modules provided by this target.
+provides
+ fnvector_openmp_mod.mod

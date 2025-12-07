@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_sunmatrixband.a CMakeFiles/sundials_sunmatrixband_obj_static.dir/sunmatrix_band.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_sunmatrixband.a

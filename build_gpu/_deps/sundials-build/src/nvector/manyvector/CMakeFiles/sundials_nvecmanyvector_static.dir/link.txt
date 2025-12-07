@@ -1,0 +1,2 @@
+C:\msys64\ucrt64\bin\ar.exe qc ..\..\..\..\..\bin\libsundials_nvecmanyvector.a CMakeFiles/sundials_nvecmanyvector_obj_static.dir/nvector_manyvector.c.obj
+C:\msys64\ucrt64\bin\ranlib.exe ..\..\..\..\..\bin\libsundials_nvecmanyvector.a

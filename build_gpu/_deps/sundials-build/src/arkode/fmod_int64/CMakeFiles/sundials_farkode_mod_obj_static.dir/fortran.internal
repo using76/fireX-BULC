@@ -1,0 +1,7 @@
+# The fortran modules provided by this target.
+provides
+ farkode_arkstep_mod.mod
+ farkode_erkstep_mod.mod
+ farkode_mod.mod
+ farkode_mristep_mod.mod
+ farkode_sprkstep_mod.mod

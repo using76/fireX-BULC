@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/hypre-populate"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/hypre-populate.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/CMakeFiles/hypre-populate-complete.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-build.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-configure.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-download.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-install.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-mkdir.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-patch.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-test.rule"
+		},
+		{
+			"file" : "C:/Users/ji/Documents/fireX/build_gpu/_deps/hypre-subbuild/hypre-populate-prefix/src/hypre-populate-stamp/hypre-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"hypre-populate"
+		],
+		"name" : "hypre-populate"
+	}
+}

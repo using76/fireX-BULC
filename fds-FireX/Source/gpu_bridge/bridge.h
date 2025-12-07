@@ -14,14 +14,16 @@ extern "C" {
 
 /**
  * @brief Radiation data structure matching Fortran BIND(C) type
+ * Note: Uses double (FP64) for array pointers to match FDS REAL(EB)
+ *       Python/Triton converts to FP32 internally for GPU computation
  */
 typedef struct {
-    float* tmp_ptr;         /* Temperature field */
-    float* kappa_gas_ptr;   /* Gas absorption coefficient */
-    float* il_ptr;          /* Radiation intensity (in/out) */
-    float* qr_ptr;          /* Radiation source term (out) */
-    float* extcoe_ptr;      /* Extinction coefficient */
-    float* scaeff_ptr;      /* Scattering efficiency */
+    double* tmp_ptr;        /* Temperature field (FP64) */
+    double* kappa_gas_ptr;  /* Gas absorption coefficient (FP64) */
+    double* il_ptr;         /* Radiation intensity (in/out) (FP64) */
+    double* qr_ptr;         /* Radiation source term (out) (FP64) */
+    double* extcoe_ptr;     /* Extinction coefficient (FP64) */
+    double* scaeff_ptr;     /* Scattering efficiency (FP64) */
     int32_t ibar;           /* Grid cells in X */
     int32_t jbar;           /* Grid cells in Y */
     int32_t kbar;           /* Grid cells in Z */
