@@ -3442,8 +3442,8 @@ CALL POINT_TO_MESH(NM)
 
 #ifdef WITH_TRITON
 ! GPU-accelerated radiation using Triton kernels
-IF (RADIATION .AND. USE_GPU_RADIATION .AND. PYTHON_INITIALIZED) THEN
-   CALL COMPUTE_RADIATION_GPU(NM)
+IF (RADIATION .AND. GPU_IS_AVAILABLE()) THEN
+   CALL COMPUTE_RADIATION_GPU_TRITON(NM)
    RADIATION_COMPLETED(NM) = .TRUE.
    T_USED(9)=T_USED(9)+CURRENT_TIME()-TNOW
    RETURN
@@ -4840,6 +4840,44 @@ REAL(EB),INTENT(IN) :: SOOT_MASS_CONCENTRATION,TTMP
    KAPPA_SOOT = SOOT_MASS_CONCENTRATION*(1232.4_EB+0.591552_EB*(TTMP-2000._EB))
 
 END FUNCTION KAPPA_SOOT
+
+
+#ifdef WITH_TRITON
+!> \brief GPU-accelerated radiation computation using Triton kernels
+SUBROUTINE COMPUTE_RADIATION_GPU_TRITON(NM)
+
+USE MESH_POINTERS
+USE GPU_BRIDGE, ONLY: GPU_RADIATION_COMPUTE, GPU_SYNC
+
+INTEGER, INTENT(IN) :: NM
+INTEGER :: GPU_STATUS
+TYPE(MESH_TYPE), POINTER :: M
+
+CALL POINT_TO_MESH(NM)
+M => MESHES(NM)
+
+! Call Triton GPU kernel for radiation computation
+CALL GPU_RADIATION_COMPUTE( &
+   TMP,           &  ! Temperature field
+   KAPPA_GAS,     &  ! Gas absorption coefficient
+   UIID,          &  ! Radiation intensity (inout)
+   QR,            &  ! Radiation source term (output)
+   EXTCOE,        &  ! Extinction coefficient
+   SCAEFF,        &  ! Scattering efficiency
+   IBAR, JBAR, KBAR, &
+   NRA, NUMBER_SPECTRAL_BANDS, &
+   M%DX(1), M%DY(1), M%DZ(1), &
+   SIGMA,         &
+   GPU_STATUS)
+
+IF (GPU_STATUS /= 0) THEN
+   WRITE(LU_ERR,'(A,I0)') 'WARNING: GPU radiation failed for mesh ', NM
+ENDIF
+
+CALL GPU_SYNC()
+
+END SUBROUTINE COMPUTE_RADIATION_GPU_TRITON
+#endif
 
 
 END MODULE RAD

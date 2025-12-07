@@ -125,8 +125,12 @@ CALL CHECK_MPI
 #ifdef WITH_TRITON
 ! Initialize GPU Bridge and Triton kernels
 IF (MY_RANK==0) WRITE(LU_ERR,'(A)') ' Initializing GPU/Triton acceleration...'
-CALL INITIALIZE_GPU_BRIDGE()
-IF (MY_RANK==0 .AND. PYTHON_INITIALIZED) WRITE(LU_ERR,'(A)') ' GPU/Triton acceleration enabled'
+CALL GPU_INIT(IERR)
+IF (IERR == 0) THEN
+   IF (MY_RANK==0 .AND. GPU_IS_AVAILABLE()) WRITE(LU_ERR,'(A)') ' GPU/Triton acceleration enabled'
+ELSE
+   IF (MY_RANK==0) WRITE(LU_ERR,'(A)') ' GPU/Triton initialization failed - using CPU'
+ENDIF
 #endif
 
 ! Start wall clock timing

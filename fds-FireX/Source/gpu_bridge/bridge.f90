@@ -1,159 +1,184 @@
-!> \brief GPU Bridge Module for Triton Integration
-!>
-!> This module provides the Fortran-C interface for GPU-accelerated computations
-!> using Triton kernels. It uses ISO_C_BINDING for interoperability.
+!> \brief GPU Bridge Module for Triton Kernel Integration
+!> Provides ISO_C_BINDING interface for Fortran-C-Python communication
 
 MODULE GPU_BRIDGE
 
 USE ISO_C_BINDING
-USE PRECISION_PARAMETERS
+USE PRECISION_PARAMETERS, ONLY: EB, GPU_EB
 
 IMPLICIT NONE (TYPE,EXTERNAL)
 
-!> Python runtime initialization state
-LOGICAL, SAVE :: PYTHON_INITIALIZED = .FALSE.
+PRIVATE
 
-!> GPU acceleration flags
-LOGICAL, SAVE :: USE_GPU_RADIATION = .FALSE.
-LOGICAL, SAVE :: USE_GPU_TRANSPORT = .FALSE.
-LOGICAL, SAVE :: USE_GPU_CHEMISTRY = .FALSE.
+! Public interfaces
+PUBLIC :: GPU_INIT, GPU_FINALIZE, GPU_IS_AVAILABLE
+PUBLIC :: GPU_RADIATION_COMPUTE, GPU_SYNC
+PUBLIC :: RADIATION_GPU_DATA
 
-!> Radiation data structure for GPU kernel
+! GPU availability flag
+LOGICAL, SAVE :: GPU_INITIALIZED = .FALSE.
+LOGICAL, SAVE :: GPU_AVAILABLE = .FALSE.
+
+!> Radiation data structure for GPU transfer
 TYPE, BIND(C) :: RADIATION_GPU_DATA
-   TYPE(C_PTR) :: TMP           !< Temperature array pointer
-   TYPE(C_PTR) :: KAPPA_GAS     !< Gas absorption coefficient
-   TYPE(C_PTR) :: KFST4_GAS     !< Emission term (kappa * 4 * sigma * T^4)
-   TYPE(C_PTR) :: IL            !< Radiation intensity
-   TYPE(C_PTR) :: UIID          !< Integrated intensity
-   TYPE(C_PTR) :: QR            !< Radiative heat source
-   TYPE(C_PTR) :: EXTCOE        !< Extinction coefficient
-   TYPE(C_PTR) :: SCAEFF        !< Scattering efficiency
-   TYPE(C_PTR) :: UIIOLD        !< Previous integrated intensity
-   TYPE(C_PTR) :: DX            !< Grid spacing X
-   TYPE(C_PTR) :: DY            !< Grid spacing Y
-   TYPE(C_PTR) :: DZ            !< Grid spacing Z
-   TYPE(C_PTR) :: DLX           !< Direction cosine X
-   TYPE(C_PTR) :: DLY           !< Direction cosine Y
-   TYPE(C_PTR) :: DLZ           !< Direction cosine Z
-   TYPE(C_PTR) :: RSA           !< Solid angle weights
-   INTEGER(C_INT) :: IBAR       !< Number of cells in X
-   INTEGER(C_INT) :: JBAR       !< Number of cells in Y
-   INTEGER(C_INT) :: KBAR       !< Number of cells in Z
-   INTEGER(C_INT) :: NRA        !< Number of radiation angles
-   INTEGER(C_INT) :: NSB        !< Number of spectral bands
-   REAL(C_FLOAT) :: FOUR_SIGMA  !< 4 * Stefan-Boltzmann constant
-   REAL(C_FLOAT) :: RFPI        !< 1 / (4 * PI)
-   REAL(C_FLOAT) :: RSA_RAT     !< Solid angle ratio
+   TYPE(C_PTR) :: TMP_PTR          !< Temperature field pointer
+   TYPE(C_PTR) :: KAPPA_GAS_PTR    !< Gas absorption coefficient pointer
+   TYPE(C_PTR) :: IL_PTR           !< Radiation intensity pointer (input/output)
+   TYPE(C_PTR) :: QR_PTR           !< Radiation source term pointer (output)
+   TYPE(C_PTR) :: EXTCOE_PTR       !< Extinction coefficient pointer
+   TYPE(C_PTR) :: SCAEFF_PTR       !< Scattering efficiency pointer
+   INTEGER(C_INT) :: IBAR          !< Grid cells in X direction
+   INTEGER(C_INT) :: JBAR          !< Grid cells in Y direction
+   INTEGER(C_INT) :: KBAR          !< Grid cells in Z direction
+   INTEGER(C_INT) :: NRA           !< Number of radiation angles
+   INTEGER(C_INT) :: NBAND         !< Number of spectral bands
+   REAL(C_FLOAT) :: DX             !< Grid spacing X
+   REAL(C_FLOAT) :: DY             !< Grid spacing Y
+   REAL(C_FLOAT) :: DZ             !< Grid spacing Z
+   REAL(C_FLOAT) :: SIGMA          !< Stefan-Boltzmann constant
 END TYPE RADIATION_GPU_DATA
 
-!> C function interfaces
+! C function interfaces
 INTERFACE
-
-   !> Initialize Python runtime and load Triton modules
-   FUNCTION init_python_runtime() BIND(C, NAME='init_python_runtime')
+   !> Initialize Python runtime and Triton kernels
+   FUNCTION gpu_bridge_init() BIND(C, NAME='gpu_bridge_init')
       IMPORT :: C_INT
-      INTEGER(C_INT) :: init_python_runtime
-   END FUNCTION init_python_runtime
+      INTEGER(C_INT) :: gpu_bridge_init
+   END FUNCTION gpu_bridge_init
 
    !> Finalize Python runtime
-   SUBROUTINE finalize_python_runtime() BIND(C, NAME='finalize_python_runtime')
-   END SUBROUTINE finalize_python_runtime
+   SUBROUTINE gpu_bridge_finalize() BIND(C, NAME='gpu_bridge_finalize')
+   END SUBROUTINE gpu_bridge_finalize
 
-   !> Call Triton radiation kernel
-   FUNCTION call_radiation_kernel(data) BIND(C, NAME='call_radiation_kernel')
+   !> Check if GPU (CUDA) is available
+   FUNCTION gpu_bridge_check_gpu() BIND(C, NAME='gpu_bridge_check_gpu')
+      IMPORT :: C_INT
+      INTEGER(C_INT) :: gpu_bridge_check_gpu
+   END FUNCTION gpu_bridge_check_gpu
+
+   !> Compute radiation using Triton kernel
+   FUNCTION gpu_radiation_kernel(data) BIND(C, NAME='gpu_radiation_kernel')
       IMPORT :: C_INT, RADIATION_GPU_DATA
       TYPE(RADIATION_GPU_DATA), INTENT(IN) :: data
-      INTEGER(C_INT) :: call_radiation_kernel
-   END FUNCTION call_radiation_kernel
-
-   !> Allocate GPU memory (pinned/unified)
-   FUNCTION allocate_gpu_array(size_bytes) BIND(C, NAME='allocate_gpu_array')
-      IMPORT :: C_PTR, C_SIZE_T
-      INTEGER(C_SIZE_T), VALUE :: size_bytes
-      TYPE(C_PTR) :: allocate_gpu_array
-   END FUNCTION allocate_gpu_array
-
-   !> Free GPU memory
-   SUBROUTINE free_gpu_array(ptr) BIND(C, NAME='free_gpu_array')
-      IMPORT :: C_PTR
-      TYPE(C_PTR), VALUE :: ptr
-   END SUBROUTINE free_gpu_array
+      INTEGER(C_INT) :: gpu_radiation_kernel
+   END FUNCTION gpu_radiation_kernel
 
    !> Synchronize GPU operations
-   SUBROUTINE gpu_sync() BIND(C, NAME='gpu_sync')
-   END SUBROUTINE gpu_sync
-
+   SUBROUTINE gpu_bridge_sync() BIND(C, NAME='gpu_bridge_sync')
+   END SUBROUTINE gpu_bridge_sync
 END INTERFACE
 
 CONTAINS
 
-!> \brief Initialize GPU Bridge and Python runtime
-!> \details Called once at simulation startup to initialize Python interpreter
-!>          and load Triton kernel modules
-SUBROUTINE INITIALIZE_GPU_BRIDGE()
+!> Initialize GPU bridge (Python runtime + Triton)
+SUBROUTINE GPU_INIT(STATUS)
+   INTEGER, INTENT(OUT) :: STATUS
+   INTEGER(C_INT) :: C_STATUS
 
-   INTEGER(C_INT) :: status
-
-   IF (.NOT. PYTHON_INITIALIZED) THEN
-      status = init_python_runtime()
-      IF (status == 0) THEN
-         PYTHON_INITIALIZED = .TRUE.
-         USE_GPU_RADIATION = .TRUE.
-         WRITE(*,'(A)') ' GPU Bridge: Python runtime initialized successfully'
-         WRITE(*,'(A)') ' GPU Bridge: Triton kernels loaded'
-      ELSE
-         WRITE(*,'(A,I0)') ' GPU Bridge: Failed to initialize Python runtime, error code: ', status
-         USE_GPU_RADIATION = .FALSE.
-      ENDIF
+   IF (GPU_INITIALIZED) THEN
+      STATUS = 0
+      RETURN
    ENDIF
 
-END SUBROUTINE INITIALIZE_GPU_BRIDGE
-
-!> \brief Finalize GPU Bridge
-!> \details Called at simulation end to clean up Python runtime
-SUBROUTINE FINALIZE_GPU_BRIDGE()
-
-   IF (PYTHON_INITIALIZED) THEN
-      CALL finalize_python_runtime()
-      PYTHON_INITIALIZED = .FALSE.
-      WRITE(*,'(A)') ' GPU Bridge: Python runtime finalized'
+   ! Initialize Python runtime
+   C_STATUS = gpu_bridge_init()
+   IF (C_STATUS /= 0) THEN
+      STATUS = -1
+      GPU_INITIALIZED = .FALSE.
+      GPU_AVAILABLE = .FALSE.
+      RETURN
    ENDIF
 
-END SUBROUTINE FINALIZE_GPU_BRIDGE
+   ! Check GPU availability
+   C_STATUS = gpu_bridge_check_gpu()
+   GPU_AVAILABLE = (C_STATUS == 1)
+   GPU_INITIALIZED = .TRUE.
+   STATUS = 0
 
-!> \brief Compute radiation using GPU/Triton kernels
-!> \param NM Mesh number
-!> \details This subroutine prepares data and calls Triton radiation kernel
-SUBROUTINE COMPUTE_RADIATION_GPU(NM)
+END SUBROUTINE GPU_INIT
 
-   INTEGER, INTENT(IN) :: NM
-   TYPE(RADIATION_GPU_DATA) :: rad_data
-   INTEGER(C_INT) :: status
+!> Finalize GPU bridge
+SUBROUTINE GPU_FINALIZE()
+   IF (GPU_INITIALIZED) THEN
+      CALL gpu_bridge_finalize()
+      GPU_INITIALIZED = .FALSE.
+      GPU_AVAILABLE = .FALSE.
+   ENDIF
+END SUBROUTINE GPU_FINALIZE
 
-   ! This is a placeholder - actual implementation requires mesh data access
-   ! The full implementation will be in radi.f90 where mesh pointers are available
+!> Check if GPU is available for computation
+FUNCTION GPU_IS_AVAILABLE() RESULT(AVAILABLE)
+   LOGICAL :: AVAILABLE
+   AVAILABLE = GPU_INITIALIZED .AND. GPU_AVAILABLE
+END FUNCTION GPU_IS_AVAILABLE
 
-   WRITE(*,'(A,I0)') ' GPU Bridge: Calling radiation kernel for mesh ', NM
+!> Compute radiation heat transfer on GPU
+SUBROUTINE GPU_RADIATION_COMPUTE(TMP, KAPPA_GAS, IL, QR, EXTCOE, SCAEFF, &
+                                  IBAR, JBAR, KBAR, NRA, NBAND, &
+                                  DX, DY, DZ, SIGMA, STATUS)
+   ! Input arrays (Fortran native layout)
+   REAL(EB), TARGET, INTENT(IN) :: TMP(0:,0:,0:)
+   REAL(EB), TARGET, INTENT(IN) :: KAPPA_GAS(:,:,:)
+   REAL(EB), TARGET, INTENT(INOUT) :: IL(:,:,:,:)
+   REAL(EB), TARGET, INTENT(OUT) :: QR(:,:,:)
+   REAL(EB), TARGET, INTENT(IN) :: EXTCOE(:,:,:)
+   REAL(EB), TARGET, INTENT(IN) :: SCAEFF(:,:,:)
 
-   ! Placeholder for kernel call
-   ! status = call_radiation_kernel(rad_data)
+   ! Grid dimensions
+   INTEGER, INTENT(IN) :: IBAR, JBAR, KBAR, NRA, NBAND
 
-END SUBROUTINE COMPUTE_RADIATION_GPU
+   ! Grid spacing and constants
+   REAL(EB), INTENT(IN) :: DX, DY, DZ, SIGMA
 
-!> \brief Convert Fortran array to C pointer
-!> \param arr Fortran array (assumed contiguous)
-!> \return C pointer to array data
-FUNCTION FORTRAN_TO_C_PTR_3D(arr) RESULT(ptr)
-   REAL(GPU_EB), TARGET, INTENT(IN) :: arr(:,:,:)
-   TYPE(C_PTR) :: ptr
-   ptr = C_LOC(arr(LBOUND(arr,1), LBOUND(arr,2), LBOUND(arr,3)))
-END FUNCTION FORTRAN_TO_C_PTR_3D
+   ! Output status
+   INTEGER, INTENT(OUT) :: STATUS
 
-!> \brief Convert 1D Fortran array to C pointer
-FUNCTION FORTRAN_TO_C_PTR_1D(arr) RESULT(ptr)
-   REAL(GPU_EB), TARGET, INTENT(IN) :: arr(:)
-   TYPE(C_PTR) :: ptr
-   ptr = C_LOC(arr(LBOUND(arr,1)))
-END FUNCTION FORTRAN_TO_C_PTR_1D
+   ! Local variables
+   TYPE(RADIATION_GPU_DATA) :: GPU_DATA
+   INTEGER(C_INT) :: C_STATUS
+
+   ! Check if GPU is available
+   IF (.NOT. GPU_IS_AVAILABLE()) THEN
+      STATUS = -1
+      RETURN
+   ENDIF
+
+   ! Prepare GPU data structure
+   GPU_DATA%TMP_PTR = C_LOC(TMP(0,0,0))
+   GPU_DATA%KAPPA_GAS_PTR = C_LOC(KAPPA_GAS(1,1,1))
+   GPU_DATA%IL_PTR = C_LOC(IL(1,1,1,1))
+   GPU_DATA%QR_PTR = C_LOC(QR(1,1,1))
+   GPU_DATA%EXTCOE_PTR = C_LOC(EXTCOE(1,1,1))
+   GPU_DATA%SCAEFF_PTR = C_LOC(SCAEFF(1,1,1))
+
+   GPU_DATA%IBAR = INT(IBAR, C_INT)
+   GPU_DATA%JBAR = INT(JBAR, C_INT)
+   GPU_DATA%KBAR = INT(KBAR, C_INT)
+   GPU_DATA%NRA = INT(NRA, C_INT)
+   GPU_DATA%NBAND = INT(NBAND, C_INT)
+
+   GPU_DATA%DX = REAL(DX, C_FLOAT)
+   GPU_DATA%DY = REAL(DY, C_FLOAT)
+   GPU_DATA%DZ = REAL(DZ, C_FLOAT)
+   GPU_DATA%SIGMA = REAL(SIGMA, C_FLOAT)
+
+   ! Call Triton kernel via C bridge
+   C_STATUS = gpu_radiation_kernel(GPU_DATA)
+
+   IF (C_STATUS /= 0) THEN
+      STATUS = -2
+      RETURN
+   ENDIF
+
+   STATUS = 0
+
+END SUBROUTINE GPU_RADIATION_COMPUTE
+
+!> Synchronize GPU operations
+SUBROUTINE GPU_SYNC()
+   IF (GPU_INITIALIZED) THEN
+      CALL gpu_bridge_sync()
+   ENDIF
+END SUBROUTINE GPU_SYNC
 
 END MODULE GPU_BRIDGE

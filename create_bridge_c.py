@@ -1,4 +1,4 @@
-/**
+content = r'''/**
  * @file bridge.c
  * @brief C-Python Bridge Implementation for FDS-FireX Triton GPU Kernels
  */
@@ -175,3 +175,7 @@ void gpu_bridge_sync(void) {
     }
     Py_DECREF(torch);
 }
+'''
+with open(r'C:\Users\ji\Documents\fireX\fds-FireX\Source\gpu_bridge\bridge.c', 'w') as f:
+    f.write(content)
+print('Created bridge.c')
