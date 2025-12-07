@@ -129,6 +129,14 @@ endif()
 find_package(MPI REQUIRED)
 target_link_libraries(fds PRIVATE MPI::MPI_Fortran)
 
+# Check if mpi_f08.mod exists (Fortran 2008 MPI interface)
+# MS-MPI and some other MPI implementations don't provide mpi_f08.mod
+find_path(MPI_F08_MOD_PATH mpi_f08.mod HINTS ${MPI_Fortran_INCLUDE_PATH})
+if(NOT MPI_F08_MOD_PATH)
+    message(STATUS "mpi_f08.mod not found - using Fortran 90 MPI interface (WITHOUT_MPIF08)")
+    target_compile_definitions(fds PRIVATE WITHOUT_MPIF08)
+endif()
+
 # FDS use lp64 (4-byte integer), MKL often defaults to ilp64 (8-byte integer)
 set(MKL_INTERFACE lp64)
 # Turn on BLACS
@@ -238,6 +246,12 @@ if(USE_HYPRE OR USE_HYPRE_NVIDIA OR USE_HYPRE_AMDGPU OR USE_HYPRE_INTELGPU)
 endif()
 
 # Find or build sundials if the option is set to use it
+# Note: SUNDIALS uses double precision (FP64) internally, so it's incompatible with FP32 builds
+if(USE_FP32 AND USE_SUNDIALS)
+    message(WARNING "SUNDIALS is incompatible with FP32 precision - disabling SUNDIALS")
+    set(USE_SUNDIALS OFF)
+endif()
+
 if(USE_SUNDIALS)
     # Unless forced to use the system version, download and build sundials
     if(NOT(USE_SYSTEM_SUNDIALS))
