@@ -5,7 +5,15 @@ MODULE PRECISION_PARAMETERS
 IMPLICIT NONE (TYPE,EXTERNAL)
 
 INTEGER, PARAMETER :: FB = SELECTED_REAL_KIND(6)     !< Precision of "Four Byte" reals
-INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(12)    !< Precision of "Eight Byte" reals
+
+#ifdef USE_FP32
+INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(6)     !< FP32 mode for GPU acceleration (Triton)
+#else
+INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(12)    !< Precision of "Eight Byte" reals (default FP64)
+#endif
+
+!> GPU computation precision (always FP32 for Triton kernels)
+INTEGER, PARAMETER :: GPU_EB = SELECTED_REAL_KIND(6)
 INTEGER, PARAMETER :: QB = SELECTED_REAL_KIND(33,4931) !< Precision of "Sixteen Byte" reals
 INTEGER, PARAMETER :: IB8 = SELECTED_INT_KIND(2)     !< Precision of "One Byte" ints
 INTEGER, PARAMETER :: IB16 = SELECTED_INT_KIND(3)    !< Precision of "Two Byte" ints

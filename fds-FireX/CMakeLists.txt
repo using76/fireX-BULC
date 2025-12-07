@@ -23,6 +23,10 @@ option(USE_SYSTEM_SUNDIALS "Use the sundials library from the system" OFF)
 
 option(USE_OPENMP          "Use OpenMP"                               ON)
 
+# Triton GPU acceleration options
+option(USE_FP32            "Use FP32 precision for GPU acceleration"  OFF)
+option(USE_TRITON          "Enable Triton GPU kernels"                OFF)
+
 # The existing FDS makefile links MKL statically, but this is optional and can
 # be changed to dynamic
 set(MKL_LINK static CACHE STRING "Linking method for MKL (static or dynamic)")
@@ -96,6 +100,30 @@ endif()
 target_compile_definitions(fds PRIVATE BUILDDATE_PP="${BUILD_DATE}")
 target_compile_definitions(fds PRIVATE GITHASH_PP="${GIT_HASH}${GIT_STAT}-${GIT_BRANCH}")
 target_compile_definitions(fds PRIVATE GITDATE_PP="${GIT_DATE}")
+
+# FP32/Triton GPU acceleration compile definitions
+if(USE_FP32)
+    target_compile_definitions(fds PRIVATE USE_FP32)
+    message(STATUS "FP32 precision enabled for GPU acceleration")
+endif()
+
+if(USE_TRITON)
+    target_compile_definitions(fds PRIVATE WITH_TRITON)
+    message(STATUS "Triton GPU kernels enabled")
+
+    # Find Python for embedding
+    find_package(Python3 COMPONENTS Development NumPy)
+    if(Python3_FOUND)
+        target_include_directories(fds PRIVATE ${Python3_INCLUDE_DIRS})
+        target_link_libraries(fds PRIVATE Python3::Python)
+        if(Python3_NumPy_FOUND)
+            target_include_directories(fds PRIVATE ${Python3_NumPy_INCLUDE_DIRS})
+        endif()
+        message(STATUS "Python3 found: ${Python3_EXECUTABLE}")
+    else()
+        message(WARNING "Python3 not found - Triton integration will be limited")
+    endif()
+endif()
 
 # Use MPI (mandatory)
 find_package(MPI REQUIRED)
