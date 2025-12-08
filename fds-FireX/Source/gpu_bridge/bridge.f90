@@ -1,19 +1,27 @@
-!> \brief GPU Bridge Module for Triton Kernel Integration
+!> rief GPU Bridge Module for Triton Kernel Integration
 !> Provides ISO_C_BINDING interface for Fortran-C-Python communication
+!> NOTE: Uses local GPU_EB parameter to avoid PRECISION_PARAMETERS crash
 
 MODULE GPU_BRIDGE
 
 USE ISO_C_BINDING
-USE PRECISION_PARAMETERS, ONLY: EB, GPU_EB
 
 IMPLICIT NONE (TYPE,EXTERNAL)
 
 PRIVATE
 
+! Local GPU precision parameter - always FP32 for GPU
+! This avoids importing from PRECISION_PARAMETERS which causes crashes
+INTEGER, PARAMETER :: EB_LOCAL = SELECTED_REAL_KIND(6)
+INTEGER, PARAMETER, PUBLIC :: GPU_EB = EB_LOCAL
+
 ! Public interfaces
 PUBLIC :: GPU_INIT, GPU_FINALIZE, GPU_IS_AVAILABLE
 PUBLIC :: GPU_RADIATION_COMPUTE, GPU_SYNC
 PUBLIC :: RADIATION_GPU_DATA
+PUBLIC :: GPU_FILTER_COMPUTE, FILTER_GPU_DATA
+PUBLIC :: GPU_VELOCITY_COMPUTE, VELOCITY_GPU_DATA
+PUBLIC :: GPU_DIVERGENCE_COMPUTE, DIVERGENCE_GPU_DATA
 
 ! GPU availability flag
 LOGICAL, SAVE :: GPU_INITIALIZED = .FALSE.
@@ -38,39 +46,75 @@ TYPE, BIND(C) :: RADIATION_GPU_DATA
    REAL(C_FLOAT) :: SIGMA          !< Stefan-Boltzmann constant
 END TYPE RADIATION_GPU_DATA
 
+!> Filter data structure
+TYPE, BIND(C) :: FILTER_GPU_DATA
+   TYPE(C_PTR) :: ORIG_PTR
+   TYPE(C_PTR) :: HAT_PTR
+   TYPE(C_PTR) :: K3D_PTR
+   INTEGER(C_INT) :: IBAR, JBAR, KBAR
+END TYPE FILTER_GPU_DATA
+
+!> Velocity data structure
+TYPE, BIND(C) :: VELOCITY_GPU_DATA
+   TYPE(C_PTR) :: U_PTR, V_PTR, W_PTR
+   TYPE(C_PTR) :: TMP_PTR, MU_PTR, STRAIN_PTR
+   INTEGER(C_INT) :: IBAR, JBAR, KBAR
+   REAL(C_FLOAT) :: RDX, RDY, RDZ
+END TYPE VELOCITY_GPU_DATA
+
+!> Divergence data structure
+TYPE, BIND(C) :: DIVERGENCE_GPU_DATA
+   TYPE(C_PTR) :: U_PTR, V_PTR, W_PTR
+   TYPE(C_PTR) :: DIV_PTR, RHO_PTR
+   INTEGER(C_INT) :: IBAR, JBAR, KBAR
+   REAL(C_FLOAT) :: RDX, RDY, RDZ
+END TYPE DIVERGENCE_GPU_DATA
+
 ! C function interfaces
 INTERFACE
-   !> Initialize Python runtime and Triton kernels
    FUNCTION gpu_bridge_init() BIND(C, NAME='gpu_bridge_init')
       IMPORT :: C_INT
       INTEGER(C_INT) :: gpu_bridge_init
    END FUNCTION gpu_bridge_init
 
-   !> Finalize Python runtime
    SUBROUTINE gpu_bridge_finalize() BIND(C, NAME='gpu_bridge_finalize')
    END SUBROUTINE gpu_bridge_finalize
 
-   !> Check if GPU (CUDA) is available
    FUNCTION gpu_bridge_check_gpu() BIND(C, NAME='gpu_bridge_check_gpu')
       IMPORT :: C_INT
       INTEGER(C_INT) :: gpu_bridge_check_gpu
    END FUNCTION gpu_bridge_check_gpu
 
-   !> Compute radiation using Triton kernel
    FUNCTION gpu_radiation_kernel(data) BIND(C, NAME='gpu_radiation_kernel')
       IMPORT :: C_INT, RADIATION_GPU_DATA
       TYPE(RADIATION_GPU_DATA), INTENT(IN) :: data
       INTEGER(C_INT) :: gpu_radiation_kernel
    END FUNCTION gpu_radiation_kernel
 
-   !> Synchronize GPU operations
    SUBROUTINE gpu_bridge_sync() BIND(C, NAME='gpu_bridge_sync')
    END SUBROUTINE gpu_bridge_sync
+
+   FUNCTION gpu_filter_kernel(data) BIND(C, NAME='gpu_filter_kernel')
+      IMPORT :: C_INT, FILTER_GPU_DATA
+      TYPE(FILTER_GPU_DATA), INTENT(IN) :: data
+      INTEGER(C_INT) :: gpu_filter_kernel
+   END FUNCTION gpu_filter_kernel
+
+   FUNCTION gpu_velocity_kernel(data) BIND(C, NAME='gpu_velocity_kernel')
+      IMPORT :: C_INT, VELOCITY_GPU_DATA
+      TYPE(VELOCITY_GPU_DATA), INTENT(IN) :: data
+      INTEGER(C_INT) :: gpu_velocity_kernel
+   END FUNCTION gpu_velocity_kernel
+
+   FUNCTION gpu_divergence_kernel(data) BIND(C, NAME='gpu_divergence_kernel')
+      IMPORT :: C_INT, DIVERGENCE_GPU_DATA
+      TYPE(DIVERGENCE_GPU_DATA), INTENT(IN) :: data
+      INTEGER(C_INT) :: gpu_divergence_kernel
+   END FUNCTION gpu_divergence_kernel
 END INTERFACE
 
 CONTAINS
 
-!> Initialize GPU bridge (Python runtime + Triton)
 SUBROUTINE GPU_INIT(STATUS)
    INTEGER, INTENT(OUT) :: STATUS
    INTEGER(C_INT) :: C_STATUS
@@ -80,7 +124,6 @@ SUBROUTINE GPU_INIT(STATUS)
       RETURN
    ENDIF
 
-   ! Initialize Python runtime
    C_STATUS = gpu_bridge_init()
    IF (C_STATUS /= 0) THEN
       STATUS = -1
@@ -89,7 +132,6 @@ SUBROUTINE GPU_INIT(STATUS)
       RETURN
    ENDIF
 
-   ! Check GPU availability
    C_STATUS = gpu_bridge_check_gpu()
    GPU_AVAILABLE = (C_STATUS == 1)
    GPU_INITIALIZED = .TRUE.
@@ -97,7 +139,6 @@ SUBROUTINE GPU_INIT(STATUS)
 
 END SUBROUTINE GPU_INIT
 
-!> Finalize GPU bridge
 SUBROUTINE GPU_FINALIZE()
    IF (GPU_INITIALIZED) THEN
       CALL gpu_bridge_finalize()
@@ -106,44 +147,33 @@ SUBROUTINE GPU_FINALIZE()
    ENDIF
 END SUBROUTINE GPU_FINALIZE
 
-!> Check if GPU is available for computation
 FUNCTION GPU_IS_AVAILABLE() RESULT(AVAILABLE)
    LOGICAL :: AVAILABLE
    AVAILABLE = GPU_INITIALIZED .AND. GPU_AVAILABLE
 END FUNCTION GPU_IS_AVAILABLE
 
-!> Compute radiation heat transfer on GPU
 SUBROUTINE GPU_RADIATION_COMPUTE(TMP, KAPPA_GAS, IL, QR, EXTCOE, SCAEFF, &
                                   IBAR, JBAR, KBAR, NRA, NBAND, &
                                   DX, DY, DZ, SIGMA, STATUS)
-   ! Input arrays (Fortran native layout)
-   REAL(EB), TARGET, INTENT(IN) :: TMP(0:,0:,0:)
-   REAL(EB), TARGET, INTENT(IN) :: KAPPA_GAS(:,:,:)
-   REAL(EB), TARGET, INTENT(INOUT) :: IL(:,:,:,:)
-   REAL(EB), TARGET, INTENT(OUT) :: QR(:,:,:)
-   REAL(EB), TARGET, INTENT(IN) :: EXTCOE(:,:,:)
-   REAL(EB), TARGET, INTENT(IN) :: SCAEFF(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: TMP(0:,0:,0:)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: KAPPA_GAS(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(INOUT) :: IL(:,:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(OUT) :: QR(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: EXTCOE(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: SCAEFF(:,:,:)
 
-   ! Grid dimensions
    INTEGER, INTENT(IN) :: IBAR, JBAR, KBAR, NRA, NBAND
-
-   ! Grid spacing and constants
-   REAL(EB), INTENT(IN) :: DX, DY, DZ, SIGMA
-
-   ! Output status
+   REAL(EB_LOCAL), INTENT(IN) :: DX, DY, DZ, SIGMA
    INTEGER, INTENT(OUT) :: STATUS
 
-   ! Local variables
    TYPE(RADIATION_GPU_DATA) :: GPU_DATA
    INTEGER(C_INT) :: C_STATUS
 
-   ! Check if GPU is available
    IF (.NOT. GPU_IS_AVAILABLE()) THEN
       STATUS = -1
       RETURN
    ENDIF
 
-   ! Prepare GPU data structure
    GPU_DATA%TMP_PTR = C_LOC(TMP(0,0,0))
    GPU_DATA%KAPPA_GAS_PTR = C_LOC(KAPPA_GAS(1,1,1))
    GPU_DATA%IL_PTR = C_LOC(IL(1,1,1,1))
@@ -162,7 +192,6 @@ SUBROUTINE GPU_RADIATION_COMPUTE(TMP, KAPPA_GAS, IL, QR, EXTCOE, SCAEFF, &
    GPU_DATA%DZ = REAL(DZ, C_FLOAT)
    GPU_DATA%SIGMA = REAL(SIGMA, C_FLOAT)
 
-   ! Call Triton kernel via C bridge
    C_STATUS = gpu_radiation_kernel(GPU_DATA)
 
    IF (C_STATUS /= 0) THEN
@@ -174,11 +203,87 @@ SUBROUTINE GPU_RADIATION_COMPUTE(TMP, KAPPA_GAS, IL, QR, EXTCOE, SCAEFF, &
 
 END SUBROUTINE GPU_RADIATION_COMPUTE
 
-!> Synchronize GPU operations
 SUBROUTINE GPU_SYNC()
    IF (GPU_INITIALIZED) THEN
       CALL gpu_bridge_sync()
    ENDIF
 END SUBROUTINE GPU_SYNC
+
+
+SUBROUTINE GPU_FILTER_COMPUTE(ORIG, HAT, IBAR, JBAR, KBAR, STATUS)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: ORIG(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(OUT) :: HAT(:,:,:)
+   INTEGER, INTENT(IN) :: IBAR, JBAR, KBAR
+   INTEGER, INTENT(OUT) :: STATUS
+   TYPE(FILTER_GPU_DATA) :: GPU_DATA
+   INTEGER(C_INT) :: C_STATUS
+   IF (.NOT. GPU_IS_AVAILABLE()) THEN
+      STATUS = -1
+      RETURN
+   ENDIF
+   GPU_DATA%ORIG_PTR = C_LOC(ORIG(1,1,1))
+   GPU_DATA%HAT_PTR = C_LOC(HAT(1,1,1))
+   GPU_DATA%K3D_PTR = C_NULL_PTR
+   GPU_DATA%IBAR = INT(IBAR, C_INT)
+   GPU_DATA%JBAR = INT(JBAR, C_INT)
+   GPU_DATA%KBAR = INT(KBAR, C_INT)
+   C_STATUS = gpu_filter_kernel(GPU_DATA)
+   STATUS = MERGE(-2, 0, C_STATUS /= 0)
+END SUBROUTINE GPU_FILTER_COMPUTE
+
+SUBROUTINE GPU_VELOCITY_COMPUTE(U, V, W, TMP, MU, STRAIN, IBAR, JBAR, KBAR, DX, DY, DZ, STATUS)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: U(:,:,:), V(:,:,:), W(:,:,:), TMP(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(OUT) :: MU(:,:,:), STRAIN(:,:,:)
+   INTEGER, INTENT(IN) :: IBAR, JBAR, KBAR
+   REAL(EB_LOCAL), INTENT(IN) :: DX, DY, DZ
+   INTEGER, INTENT(OUT) :: STATUS
+   TYPE(VELOCITY_GPU_DATA) :: GPU_DATA
+   INTEGER(C_INT) :: C_STATUS
+   IF (.NOT. GPU_IS_AVAILABLE()) THEN
+      STATUS = -1
+      RETURN
+   ENDIF
+   GPU_DATA%U_PTR = C_LOC(U(1,1,1))
+   GPU_DATA%V_PTR = C_LOC(V(1,1,1))
+   GPU_DATA%W_PTR = C_LOC(W(1,1,1))
+   GPU_DATA%TMP_PTR = C_LOC(TMP(1,1,1))
+   GPU_DATA%MU_PTR = C_LOC(MU(1,1,1))
+   GPU_DATA%STRAIN_PTR = C_LOC(STRAIN(1,1,1))
+   GPU_DATA%IBAR = INT(IBAR, C_INT)
+   GPU_DATA%JBAR = INT(JBAR, C_INT)
+   GPU_DATA%KBAR = INT(KBAR, C_INT)
+   GPU_DATA%RDX = REAL(1.0_EB_LOCAL/DX, C_FLOAT)
+   GPU_DATA%RDY = REAL(1.0_EB_LOCAL/DY, C_FLOAT)
+   GPU_DATA%RDZ = REAL(1.0_EB_LOCAL/DZ, C_FLOAT)
+   C_STATUS = gpu_velocity_kernel(GPU_DATA)
+   STATUS = MERGE(-2, 0, C_STATUS /= 0)
+END SUBROUTINE GPU_VELOCITY_COMPUTE
+
+SUBROUTINE GPU_DIVERGENCE_COMPUTE(U, V, W, DIV, RHO, IBAR, JBAR, KBAR, DX, DY, DZ, STATUS)
+   REAL(EB_LOCAL), TARGET, INTENT(IN) :: U(:,:,:), V(:,:,:), W(:,:,:), RHO(:,:,:)
+   REAL(EB_LOCAL), TARGET, INTENT(OUT) :: DIV(:,:,:)
+   INTEGER, INTENT(IN) :: IBAR, JBAR, KBAR
+   REAL(EB_LOCAL), INTENT(IN) :: DX, DY, DZ
+   INTEGER, INTENT(OUT) :: STATUS
+   TYPE(DIVERGENCE_GPU_DATA) :: GPU_DATA
+   INTEGER(C_INT) :: C_STATUS
+   IF (.NOT. GPU_IS_AVAILABLE()) THEN
+      STATUS = -1
+      RETURN
+   ENDIF
+   GPU_DATA%U_PTR = C_LOC(U(1,1,1))
+   GPU_DATA%V_PTR = C_LOC(V(1,1,1))
+   GPU_DATA%W_PTR = C_LOC(W(1,1,1))
+   GPU_DATA%DIV_PTR = C_LOC(DIV(1,1,1))
+   GPU_DATA%RHO_PTR = C_LOC(RHO(1,1,1))
+   GPU_DATA%IBAR = INT(IBAR, C_INT)
+   GPU_DATA%JBAR = INT(JBAR, C_INT)
+   GPU_DATA%KBAR = INT(KBAR, C_INT)
+   GPU_DATA%RDX = REAL(1.0_EB_LOCAL/DX, C_FLOAT)
+   GPU_DATA%RDY = REAL(1.0_EB_LOCAL/DY, C_FLOAT)
+   GPU_DATA%RDZ = REAL(1.0_EB_LOCAL/DZ, C_FLOAT)
+   C_STATUS = gpu_divergence_kernel(GPU_DATA)
+   STATUS = MERGE(-2, 0, C_STATUS /= 0)
+END SUBROUTINE GPU_DIVERGENCE_COMPUTE
 
 END MODULE GPU_BRIDGE

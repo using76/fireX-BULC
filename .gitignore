@@ -5,3 +5,10 @@ nul
 /test_simple
 /build_fp32_gpu
 /build_fp32_notriton
+/build_fp32_bigint
+/build_fp32_clean
+/build_fp32_final
+/build_fp32_fix
+/build_fp32_minimal
+/build_fp32_python
+/build_fp32_triton

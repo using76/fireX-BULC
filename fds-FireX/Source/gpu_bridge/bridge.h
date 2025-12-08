@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file bridge.h
  * @brief C-Python Bridge Header for FDS-FireX Triton GPU Kernels
  */
@@ -21,16 +21,9 @@ typedef double REAL_EB;
 
 /**
  * @brief Radiation data structure matching Fortran BIND(C) type
- *
- * IMPORTANT: All pointer fields MUST be void* to match Fortran's C_PTR
- * which is always 8 bytes on 64-bit systems. Using REAL_EB* would cause
- * struct layout mismatch in FP32 mode (float* = 4 bytes on some compilers).
- *
- * FP32 mode: void* cast to float* in bridge.c (no conversion needed)
- * FP64 mode: void* cast to double* in bridge.c, then converted to FP32 for GPU
  */
 typedef struct {
-    void* tmp_ptr;           /* Temperature field (C_PTR from Fortran) */
+    void* tmp_ptr;           /* Temperature field */
     void* kappa_gas_ptr;     /* Gas absorption coefficient */
     void* il_ptr;            /* Radiation intensity (in/out) */
     void* qr_ptr;            /* Radiation source term (out) */
@@ -47,11 +40,61 @@ typedef struct {
     float sigma;             /* Stefan-Boltzmann constant */
 } RadiationGPUData;
 
+/**
+ * @brief Filter data structure for TEST_FILTER (3x3x3 box filter)
+ */
+typedef struct {
+    void* orig_ptr;          /* Input field */
+    void* hat_ptr;           /* Output filtered field */
+    void* k3d_ptr;           /* 3x3x3 filter weights */
+    int32_t ibar;
+    int32_t jbar;
+    int32_t kbar;
+} FilterGPUData;
+
+/**
+ * @brief Velocity data structure for viscosity and strain rate
+ */
+typedef struct {
+    void* u_ptr;             /* U velocity */
+    void* v_ptr;             /* V velocity */
+    void* w_ptr;             /* W velocity */
+    void* tmp_ptr;           /* Temperature */
+    void* mu_ptr;            /* Viscosity output */
+    void* strain_ptr;        /* Strain rate output */
+    int32_t ibar;
+    int32_t jbar;
+    int32_t kbar;
+    float rdx;               /* 1/dx */
+    float rdy;               /* 1/dy */
+    float rdz;               /* 1/dz */
+} VelocityGPUData;
+
+/**
+ * @brief Divergence data structure
+ */
+typedef struct {
+    void* u_ptr;
+    void* v_ptr;
+    void* w_ptr;
+    void* div_ptr;           /* Divergence output */
+    void* rho_ptr;           /* Density */
+    int32_t ibar;
+    int32_t jbar;
+    int32_t kbar;
+    float rdx;
+    float rdy;
+    float rdz;
+} DivergenceGPUData;
+
 /* GPU Bridge API */
 int32_t gpu_bridge_init(void);
 void gpu_bridge_finalize(void);
 int32_t gpu_bridge_check_gpu(void);
 int32_t gpu_radiation_kernel(const RadiationGPUData* data);
+int32_t gpu_filter_kernel(const FilterGPUData* data);
+int32_t gpu_velocity_kernel(const VelocityGPUData* data);
+int32_t gpu_divergence_kernel(const DivergenceGPUData* data);
 void gpu_bridge_sync(void);
 
 #ifdef __cplusplus

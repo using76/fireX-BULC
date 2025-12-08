@@ -173,6 +173,10 @@ endif()
 
 # Set compiler flags for various compilers
 if (CMAKE_Fortran_COMPILER_ID STREQUAL "GNU")
+    # gfortran does not auto-define _WIN32, but FDS uses it
+    if(WIN32)
+        target_compile_definitions(fds PRIVATE _WIN32)
+    endif()
     target_compile_options(fds PRIVATE -cpp -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics)
 elseif(CMAKE_Fortran_COMPILER_ID STREQUAL "Intel" OR CMAKE_Fortran_COMPILER_ID STREQUAL "IntelLLVM")
     target_compile_options(fds PRIVATE -fpp )
@@ -238,8 +242,15 @@ if(USE_HYPRE OR USE_HYPRE_NVIDIA OR USE_HYPRE_AMDGPU OR USE_HYPRE_INTELGPU)
 
         # FP32 mode: Enable single precision in HYPRE
         if(USE_FP32)
-            set(HYPRE_ENABLE_SINGLE ON CACHE BOOL "" FORCE)
-            message(STATUS "HYPRE single precision enabled for FP32 mode")
+            # HYPRE single precision options - must be set BEFORE FetchContent
+            set(HYPRE_SINGLE ON CACHE BOOL "Enable single precision" FORCE)
+            set(HYPRE_ENABLE_SINGLE ON CACHE BOOL "Enable single precision" FORCE)
+            set(HYPRE_PRECISION "single" CACHE STRING "Precision mode" FORCE)
+            # Disable features incompatible with single precision
+            set(HYPRE_USING_FEI OFF CACHE BOOL "" FORCE)
+            # Enable BIGINT for FDS compatibility (FDS uses INTEGER(KIND=8) for HYPRE handles)
+            # Do NOT enable BIGINT - FDS interfaces expect HYPRE_Int=4 bytes
+            message(STATUS "HYPRE single precision (FP32) enabled (no BIGINT)")
         endif()
 
         message(STATUS "Fetching HYPRE")

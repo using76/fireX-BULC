@@ -230,21 +230,28 @@ END MODULE MKL_CLUSTER_SPARSE_SOLVER
 
 #ifdef WITH_HYPRE
 MODULE HYPRE_INTERFACE
+   USE, INTRINSIC :: ISO_C_BINDING
    IMPLICIT NONE(TYPE,EXTERNAL)
    INCLUDE 'HYPREf.h' ! defines the integer parameters
 
    ! HYPRE precision: FP32 or FP64 mode
 #ifdef USE_FP32
    INTEGER, PARAMETER :: HYPRE_REAL = 4  ! Single precision for FP32 builds
+   INTEGER, PARAMETER :: C_HYPRE_REAL = C_FLOAT
 #else
    INTEGER, PARAMETER :: HYPRE_REAL = 8  ! Double precision for FP64 builds
+   INTEGER, PARAMETER :: C_HYPRE_REAL = C_DOUBLE
 #endif
 
    INTEGER :: HYPRE_IERR = 0
    INTEGER, PARAMETER :: HYPRE_SOLVER_ID = 1                 ! Preconditioned Conjugate Gradient (PCG) solver
    INTEGER, PARAMETER :: HYPRE_PRECOND_ID = 2                ! Algebraic Multi-Grid (AMG) preconditioner
    INTEGER, PARAMETER :: HYPRE_SOLVER_MAXIT = 1000           ! Max iterations of PCG solver
-   REAL(KIND=HYPRE_REAL), PARAMETER :: HYPRE_SOLVER_TOL = 1.D-12  ! Solver tolerance
+#ifdef USE_FP32
+   REAL(KIND=4), PARAMETER :: HYPRE_SOLVER_TOL = 1.0E-6      ! Solver tolerance (relaxed for FP32)
+#else
+   REAL(KIND=8), PARAMETER :: HYPRE_SOLVER_TOL = 1.0D-12     ! Solver tolerance
+#endif
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETTWONORM = 1         ! 0=use L_Infty norm (max error) for convergence, 1=use L2 norm
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETPRINTLEVEL = 0      ! 0=no output, 1=minimal, 2=verbose
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETLOGGING = 0         ! 0=no logging, 1=solver stores intermediate info, norms, etc.
@@ -267,7 +274,11 @@ MODULE HYPRE_INTERFACE
                                                              ! 16  Chebyshev smoothing (useful for difficult problems)
                                                              ! 18  L1-scaled Jacobi
    INTEGER, PARAMETER :: HYPRE_PRECOND_NUMSWEEPS = 1         ! Number of sweeps on each level of preconditioner
-   REAL(KIND=HYPRE_REAL), PARAMETER :: HYPRE_PRECOND_TOL = 0.D0  ! Preconditioner convergence tolerance
+#ifdef USE_FP32
+   REAL(KIND=4), PARAMETER :: HYPRE_PRECOND_TOL = 0.0E0      ! Preconditioner convergence tolerance
+#else
+   REAL(KIND=8), PARAMETER :: HYPRE_PRECOND_TOL = 0.0D0      ! Preconditioner convergence tolerance
+#endif
    INTEGER, PARAMETER :: HYPRE_PRECOND_MAXITER = 1           ! Max number of iterations for preconditioner
 
    TYPE HYPRE_ZM_TYPE
@@ -279,7 +290,7 @@ MODULE HYPRE_INTERFACE
       INTEGER(KIND=8) :: PAR_X_H                             ! Solution object
       INTEGER(KIND=8) :: SOLVER                              ! Solver handle
       INTEGER(KIND=8) :: PRECOND                             ! Preconditioner handle
-      INTEGER, ALLOCATABLE, DIMENSION(:) :: INDICES          ! Row indices of rhs and solution vectors
+      INTEGER(KIND=8), ALLOCATABLE, DIMENSION(:) :: INDICES  ! Row indices (HYPRE_BigInt = 8 bytes)
       INTEGER :: NUM_ITERATIONS                              ! Output number of iterations
       REAL(KIND=HYPRE_REAL) :: FINAL_RES_NORM                ! Final residual norm
    END TYPE HYPRE_ZM_TYPE
@@ -312,7 +323,7 @@ MODULE HYPRE_INTERFACE
          USE MPI_F08
          TYPE(MPI_COMM),  INTENT(IN)  :: COMM
 #endif
-         INTEGER,         INTENT(IN)  :: I1,I2,I3,I4
+         INTEGER(KIND=8), INTENT(IN)  :: I1,I2,I3,I4   ! HYPRE_BigInt
          INTEGER(KIND=8), INTENT(OUT) :: A
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_IJMATRIXCREATE
@@ -338,8 +349,8 @@ MODULE HYPRE_INTERFACE
          INTEGER(KIND=8), INTENT(IN)  :: A
          INTEGER,         INTENT(IN)  :: NROWS
          INTEGER,         INTENT(IN)  :: NCOLS(*)
-         INTEGER,         INTENT(IN)  :: ROWS(*)
-         INTEGER,         INTENT(IN)  :: COLS(*)
+         INTEGER(KIND=8), INTENT(IN)  :: ROWS(*)   ! HYPRE_BigInt
+         INTEGER(KIND=8), INTENT(IN)  :: COLS(*)   ! HYPRE_BigInt
 #ifdef USE_FP32
          REAL(KIND=4),    INTENT(IN)  :: VALUES(*)
 #else
@@ -373,7 +384,7 @@ MODULE HYPRE_INTERFACE
          USE MPI_F08
          TYPE(MPI_COMM),  INTENT(IN)  :: COMM
 #endif
-         INTEGER,         INTENT(IN)  :: ILOWER,IUPPER
+         INTEGER(KIND=8), INTENT(IN)  :: ILOWER,IUPPER   ! HYPRE_BigInt
          INTEGER(KIND=8), INTENT(OUT) :: X
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_IJVECTORCREATE
@@ -398,7 +409,7 @@ MODULE HYPRE_INTERFACE
       SUBROUTINE HYPRE_IJVECTORSETVALUES(X, LOCAL_SIZE, ROWS, VALUES, IERR)
          INTEGER(KIND=8), INTENT(IN)  :: X
          INTEGER,         INTENT(IN)  :: LOCAL_SIZE
-         INTEGER,         INTENT(IN)  :: ROWS(*)
+         INTEGER(KIND=8), INTENT(IN)  :: ROWS(*)   ! HYPRE_BigInt
 #ifdef USE_FP32
          REAL(KIND=4),    INTENT(IN)  :: VALUES(*)
 #else
@@ -410,7 +421,7 @@ MODULE HYPRE_INTERFACE
       SUBROUTINE HYPRE_IJVECTORGETVALUES(X, LOCAL_SIZE, ROWS, VALUES, IERR)
          INTEGER(KIND=8), INTENT(IN)  :: X
          INTEGER,         INTENT(IN)  :: LOCAL_SIZE
-         INTEGER,         INTENT(IN)  :: ROWS(*)
+         INTEGER(KIND=8), INTENT(IN)  :: ROWS(*)   ! HYPRE_BigInt
 #ifdef USE_FP32
          REAL(KIND=4),    INTENT(OUT) :: VALUES(*)
 #else
