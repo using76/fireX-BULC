@@ -7850,7 +7850,7 @@ DEVICE_LOOP: DO N=1,N_DEVC
 
                ! If no WALL, CFACE, or PARTICLE is found, set the value of the device to 0
 
-               IF (ABS(VALUE)>1.E+100_EB) SDV%VALUE_1 = 0._EB
+               IF (ABS(VALUE)>HUGE(1._EB)*0.1_EB) SDV%VALUE_1 = 0._EB
 
          END SELECT SOLID_STATS_SELECT
 
@@ -8027,7 +8027,7 @@ DEVICE_LOOP: DO N=1,N_DEVC
 
                ! If no appropriate particles are found, set the value of the device to 0
 
-               IF (ABS(VALUE)>1.E+100_EB) SDV%VALUE_1 = 0._EB
+               IF (ABS(VALUE)>HUGE(1._EB)*0.1_EB) SDV%VALUE_1 = 0._EB
 
          END SELECT
 

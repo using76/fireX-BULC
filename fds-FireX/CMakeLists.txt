@@ -236,6 +236,12 @@ if(USE_HYPRE OR USE_HYPRE_NVIDIA OR USE_HYPRE_AMDGPU OR USE_HYPRE_INTELGPU)
             set(CMAKE_POSITION_INDEPEDENT_CODE ON CACHE BOOL "" FORCE)
         endif()
 
+        # FP32 mode: Enable single precision in HYPRE
+        if(USE_FP32)
+            set(HYPRE_ENABLE_SINGLE ON CACHE BOOL "" FORCE)
+            message(STATUS "HYPRE single precision enabled for FP32 mode")
+        endif()
+
         message(STATUS "Fetching HYPRE")
         FetchContent_MakeAvailable(HYPRE)
     endif()

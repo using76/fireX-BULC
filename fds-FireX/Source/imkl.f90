@@ -232,11 +232,19 @@ END MODULE MKL_CLUSTER_SPARSE_SOLVER
 MODULE HYPRE_INTERFACE
    IMPLICIT NONE(TYPE,EXTERNAL)
    INCLUDE 'HYPREf.h' ! defines the integer parameters
+
+   ! HYPRE precision: FP32 or FP64 mode
+#ifdef USE_FP32
+   INTEGER, PARAMETER :: HYPRE_REAL = 4  ! Single precision for FP32 builds
+#else
+   INTEGER, PARAMETER :: HYPRE_REAL = 8  ! Double precision for FP64 builds
+#endif
+
    INTEGER :: HYPRE_IERR = 0
    INTEGER, PARAMETER :: HYPRE_SOLVER_ID = 1                 ! Preconditioned Conjugate Gradient (PCG) solver
    INTEGER, PARAMETER :: HYPRE_PRECOND_ID = 2                ! Algebraic Multi-Grid (AMG) preconditioner
    INTEGER, PARAMETER :: HYPRE_SOLVER_MAXIT = 1000           ! Max iterations of PCG solver
-   REAL(KIND=8), PARAMETER :: HYPRE_SOLVER_TOL = 1.D-12      ! Solver tolerance
+   REAL(KIND=HYPRE_REAL), PARAMETER :: HYPRE_SOLVER_TOL = 1.D-12  ! Solver tolerance
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETTWONORM = 1         ! 0=use L_Infty norm (max error) for convergence, 1=use L2 norm
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETPRINTLEVEL = 0      ! 0=no output, 1=minimal, 2=verbose
    INTEGER, PARAMETER :: HYPRE_SOLVER_SETLOGGING = 0         ! 0=no logging, 1=solver stores intermediate info, norms, etc.
@@ -259,7 +267,7 @@ MODULE HYPRE_INTERFACE
                                                              ! 16  Chebyshev smoothing (useful for difficult problems)
                                                              ! 18  L1-scaled Jacobi
    INTEGER, PARAMETER :: HYPRE_PRECOND_NUMSWEEPS = 1         ! Number of sweeps on each level of preconditioner
-   REAL(KIND=8), PARAMETER :: HYPRE_PRECOND_TOL = 0.D0       ! Preconditioner convergence tolerance
+   REAL(KIND=HYPRE_REAL), PARAMETER :: HYPRE_PRECOND_TOL = 0.D0  ! Preconditioner convergence tolerance
    INTEGER, PARAMETER :: HYPRE_PRECOND_MAXITER = 1           ! Max number of iterations for preconditioner
 
    TYPE HYPRE_ZM_TYPE
@@ -273,7 +281,7 @@ MODULE HYPRE_INTERFACE
       INTEGER(KIND=8) :: PRECOND                             ! Preconditioner handle
       INTEGER, ALLOCATABLE, DIMENSION(:) :: INDICES          ! Row indices of rhs and solution vectors
       INTEGER :: NUM_ITERATIONS                              ! Output number of iterations
-      REAL(KIND=8) :: FINAL_RES_NORM                         ! Final residual norm
+      REAL(KIND=HYPRE_REAL) :: FINAL_RES_NORM                ! Final residual norm
    END TYPE HYPRE_ZM_TYPE
 
    INTERFACE
@@ -332,7 +340,11 @@ MODULE HYPRE_INTERFACE
          INTEGER,         INTENT(IN)  :: NCOLS(*)
          INTEGER,         INTENT(IN)  :: ROWS(*)
          INTEGER,         INTENT(IN)  :: COLS(*)
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(IN)  :: VALUES(*)
+#else
          REAL(KIND=8),    INTENT(IN)  :: VALUES(*)
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_IJMATRIXSETVALUES
 
@@ -387,7 +399,11 @@ MODULE HYPRE_INTERFACE
          INTEGER(KIND=8), INTENT(IN)  :: X
          INTEGER,         INTENT(IN)  :: LOCAL_SIZE
          INTEGER,         INTENT(IN)  :: ROWS(*)
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(IN)  :: VALUES(*)
+#else
          REAL(KIND=8),    INTENT(IN)  :: VALUES(*)
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_IJVECTORSETVALUES
 
@@ -395,7 +411,11 @@ MODULE HYPRE_INTERFACE
          INTEGER(KIND=8), INTENT(IN)  :: X
          INTEGER,         INTENT(IN)  :: LOCAL_SIZE
          INTEGER,         INTENT(IN)  :: ROWS(*)
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(OUT) :: VALUES(*)
+#else
          REAL(KIND=8),    INTENT(OUT) :: VALUES(*)
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_IJVECTORGETVALUES
 
@@ -436,13 +456,21 @@ MODULE HYPRE_INTERFACE
 
       SUBROUTINE HYPRE_PARCSRPCGSETTOL(SOLVER, TOL, IERR)
          INTEGER(KIND=8), INTENT(IN)  :: SOLVER
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(IN)  :: TOL
+#else
          REAL(KIND=8),    INTENT(IN)  :: TOL
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_PARCSRPCGSETTOL
 
       SUBROUTINE HYPRE_PARCSRPCGSETATOL(SOLVER, TOL, IERR)
          INTEGER(KIND=8), INTENT(IN)  :: SOLVER
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(IN)  :: TOL
+#else
          REAL(KIND=8),    INTENT(IN)  :: TOL
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_PARCSRPCGSETATOL
 
@@ -500,7 +528,11 @@ MODULE HYPRE_INTERFACE
 
       SUBROUTINE HYPRE_BOOMERAMGSETTOL(PRECOND, TOL, IERR)
          INTEGER(KIND=8), INTENT(IN)  :: PRECOND
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(IN)  :: TOL
+#else
          REAL(KIND=8),    INTENT(IN)  :: TOL
+#endif
          INTEGER,         INTENT(OUT) :: IERR
       END SUBROUTINE HYPRE_BOOMERAMGSETTOL
 
@@ -541,7 +573,11 @@ MODULE HYPRE_INTERFACE
 
       SUBROUTINE HYPRE_PARCSRPCGGETFINALRELATIVE(SOLVER, FINAL_RES_NORM, IERR)
          INTEGER(KIND=8), INTENT(IN)     :: SOLVER
+#ifdef USE_FP32
+         REAL(KIND=4),    INTENT(OUT)    :: FINAL_RES_NORM
+#else
          REAL(KIND=8),    INTENT(OUT)    :: FINAL_RES_NORM
+#endif
          INTEGER,         INTENT(OUT)    :: IERR
       END SUBROUTINE HYPRE_PARCSRPCGGETFINALRELATIVE
 

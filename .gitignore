@@ -3,3 +3,5 @@
 nul
 /build_fp32
 /test_simple
+/build_fp32_gpu
+/build_fp32_notriton
